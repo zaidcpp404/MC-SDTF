@@ -1,5 +1,5 @@
 """
-MC-SDTF IoT Sensor Node Model Diagram (Fig. 2)
+MC-SDTF IoT Sensor Node Model Diagram (Fig. 1)
 ================================================
 Generates a block diagram of the sensor node architecture.
 Equivalent to P02_Simscape_Sensor_Node.m (visual output).
@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 def generate_sensor_node_diagram(output_dir: str = "output"):
-    """Generate IoT sensor node block diagram (Fig. 2)."""
+    """Generate IoT sensor node block diagram (Fig. 1)."""
     fig, ax = plt.subplots(figsize=(14, 8))
     ax.set_xlim(0, 14)
     ax.set_ylim(0, 10)
@@ -88,16 +88,16 @@ def generate_sensor_node_diagram(output_dir: str = "output"):
     ax.annotate("", xy=(5.0, 5.5), xytext=(4.0, 5.0), arrowprops={**arrow_props, "linestyle": "dashed"})
     ax.annotate("", xy=(7.0, 5.5), xytext=(7.0, 5.0), arrowprops={**arrow_props, "linestyle": "dashed"})
 
-    ax.text(7, 9.8, "Fig. 2. MC-SDTF IoT Sensor Node Model",
+    ax.text(7, 9.8, "Fig. 1. MC-SDTF IoT Sensor Node Model",
             fontsize=13, fontweight="bold", ha="center")
 
     plt.tight_layout()
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out / "Fig2_SensorNode.png", dpi=300, bbox_inches="tight")
-    fig.savefig(out / "Fig2_SensorNode.pdf", bbox_inches="tight")
+    fig.savefig(out / "Fig1_SensorNode.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out / "Fig1_SensorNode.pdf", bbox_inches="tight")
     plt.close(fig)
-    print("Fig. 2 sensor node diagram saved.")
+    print("Fig. 1 sensor node diagram saved.")
 
 
 if __name__ == "__main__":

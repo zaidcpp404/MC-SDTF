@@ -1,5 +1,5 @@
 """
-MC-SDTF Architecture Diagram Generator (Fig. 1)
+MC-SDTF Architecture Diagram Generator (overview; not a numbered figure in the ICSSD2026 paper)
 ================================================
 Equivalent to P01_Architecture_Diagram.m
 Generates the four-layer MC-SDTF framework architecture.
@@ -91,16 +91,16 @@ def generate_architecture_diagram(output_dir: str = "output"):
             rotation=90, ha="left", va="center")
 
     # Title
-    ax.text(4.5, 9.7, "Fig. 1. MC-SDTF Four-Layer Architecture",
+    ax.text(4.5, 9.7, "MC-SDTF Four-Layer Architecture",
             fontsize=13, fontweight="bold", ha="center")
 
     plt.tight_layout()
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out / "Fig1_Architecture.png", dpi=300, bbox_inches="tight")
-    fig.savefig(out / "Fig1_Architecture.pdf", bbox_inches="tight")
+    fig.savefig(out / "Architecture_overview.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out / "Architecture_overview.pdf", bbox_inches="tight")
     plt.close(fig)
-    print("Fig. 1 saved as Fig1_Architecture.png and .pdf")
+    print("Architecture overview saved as Architecture_overview.png and .pdf")
 
 
 if __name__ == "__main__":
