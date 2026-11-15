@@ -10,6 +10,13 @@ Equivalent to P09_ParetoFronts, P10_NumericalResults, P11, P12, P13.
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
+from matplotlib.ticker import FormatStrFormatter, MaxNLocator
+
+
+def _avail_axis(axis):
+    """Availability (%) axis: plain decimals (no offset notation), at most 4 ticks."""
+    axis.set_major_locator(MaxNLocator(nbins=4))
+    axis.set_major_formatter(FormatStrFormatter("%.5f"))
 from pathlib import Path
 
 from metrics import key_points
@@ -59,6 +66,7 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
         ax.plot(avail[idx_minE], energy[idx_minE], "gs", ms=12, mew=2, label="Max Sustainability")
         ax.plot(avail[idx_knee], energy[idx_knee], "mp", ms=14, mew=2, label="Knee Point")
         ax.set_xlabel("System Availability (%)")
+        _avail_axis(ax.xaxis)
         ax.set_ylabel("Total Energy Consumption (kWh/yr)")
         ax.set_title("(a) Availability vs. Energy")
         ax.legend(fontsize=8)
@@ -71,6 +79,7 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
         cb = plt.colorbar(sc, ax=ax)
         cb.set_label("Energy (kWh/yr)", fontsize=9)
         ax.set_xlabel("System Availability (%)")
+        _avail_axis(ax.xaxis)
         ax.set_ylabel("Mean Recovery Time (s)")
         ax.set_title("(b) Availability vs. Recovery Time")
         ax.grid(True, alpha=0.3)
@@ -78,8 +87,8 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
         if domain == "healthcare":
             ax0 = axes[0]
             ax0.axvline(99.999, color="r", linestyle="--", lw=1.5, alpha=0.7)
-            ax0.text(99.999, ax0.get_ylim()[1] * 0.95, "99.999% ECG req.",
-                     fontsize=8, color="r", ha="right")
+            ax0.text(99.999, ax0.get_ylim()[1] * 0.95, " 99.999% ECG req.",
+                     fontsize=8, color="r", ha="left")
 
         fig.suptitle(f"Fig. {fig_num}. {title} Pareto Front", fontsize=13, fontweight="bold")
         plt.tight_layout()
@@ -174,6 +183,7 @@ def plot_sensitivity_analysis(all_results: dict, output_dir: str = "output"):
     cb.set_label("Energy (kWh/yr)")
     ax.set_xlabel("Maintenance Interval (hours)")
     ax.set_ylabel("Availability (%)")
+    _avail_axis(ax.yaxis)
     ax.set_title("(b) Maintenance Interval vs. Availability")
     ax.grid(True, alpha=0.3)
 

@@ -193,13 +193,9 @@ text.
   the sizes) so that any drift in machine speed affects all sizes alike. The objective functions
   are closed-form in N, so `scalability.csv` reports the measured split between objective
   evaluation and optimizer overhead rather than assuming one.
-* **Timing.** Runtimes depend on the machine and its power state. The committed data were
-  produced on a laptop on battery power, where macOS switched Low Power Mode on during the
-  campaign: the NSGA-II domain runs, the NSGA-III runs and MOEA/D runs 1–20 were timed before
-  that, MOEA/D runs 21–30 and the whole scalability stage after it (each run's time is in
-  `runs_metrics.csv`). Low Power Mode roughly doubled the time per run. The scalability stage
-  runs all sizes, including N = 500, in one interleaved batch, so its sizes are comparable with
-  each other but not with the per-domain runtimes.
+* **Timing.** Runtimes depend on the machine and its power state. The committed times were
+  measured one run at a time with macOS Low Power Mode off (on a laptop, Low Power Mode roughly
+  doubled the time per run in an earlier attempt). Each run's time is in `runs_metrics.csv`.
 
 ---
 

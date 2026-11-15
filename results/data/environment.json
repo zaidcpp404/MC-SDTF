@@ -1,0 +1,33 @@
+{
+  "python": "3.12.16",
+  "platform": "macOS-26.3-arm64-arm-64bit",
+  "machine": "arm64",
+  "processor": "arm",
+  "cpu_physical_cores": 8,
+  "cpu_logical_cores": 8,
+  "ram_GB": 8.6,
+  "packages": {
+    "pymoo": "0.6.1.6",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1",
+    "matplotlib": "3.10.9"
+  },
+  "settings": {
+    "repair": "all",
+    "pop_size": 200,
+    "n_gen": 500,
+    "runs": 30,
+    "scalability_sizes": [
+      500,
+      1000,
+      2500,
+      5000
+    ],
+    "scalability_runs": 5,
+    "seeds": "1..30",
+    "moead_penalty": 1000000.0,
+    "parallel_workers": 1
+  },
+  "total_optimization_wall_time_s": 5387.001687667042,
+  "generated": "2026-11-15 11:41:03 +03"
+}
