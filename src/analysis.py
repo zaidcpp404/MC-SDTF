@@ -11,6 +11,8 @@ import psutil
 import sys
 from pathlib import Path
 
+from metrics import key_points
+
 
 # =========================================================================
 # P07: Simulation Environment
@@ -98,11 +100,8 @@ def computational_overhead(all_results: dict):
         energy = fit[:, 1]
         avail = -fit[:, 0] * 100
 
-        idx_maxA = np.argmax(avail)
-        a_n = (avail - min(avail)) / max(1e-10, max(avail) - min(avail))
-        e_n = (energy - min(energy)) / max(1e-10, max(energy) - min(energy))
-        dist = np.sqrt((1 - a_n) ** 2 + e_n ** 2)
-        idx_knee = np.argmin(dist)
+        kp = key_points(fit)
+        idx_maxA, idx_knee = kp["Max-Reliability"], kp["Knee-Point"]
 
         E_saved = energy[idx_maxA] - energy[idx_knee]
         CF_saved = E_saved * gamma_compute
@@ -204,11 +203,8 @@ def conclusion_highlights(all_results: dict):
         energy = fit[:, 1]
         carbon = fit[:, 2]
 
-        idx_maxA = np.argmax(avail)
-        a_n = (avail - min(avail)) / max(1e-10, max(avail) - min(avail))
-        e_n = (energy - min(energy)) / max(1e-10, max(energy) - min(energy))
-        dist = np.sqrt((1 - a_n) ** 2 + e_n ** 2)
-        idx_knee = np.argmin(dist)
+        kp = key_points(fit)
+        idx_maxA, idx_knee = kp["Max-Reliability"], kp["Knee-Point"]
 
         e_red = (energy[idx_maxA] - energy[idx_knee]) / max(1e-10, energy[idx_maxA]) * 100
         c_red = (carbon[idx_maxA] - carbon[idx_knee]) / max(1e-10, carbon[idx_maxA]) * 100

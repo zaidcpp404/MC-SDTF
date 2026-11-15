@@ -1,37 +1,34 @@
 """
 MC-SDTF Visualization Module
 =============================
-Generates all figures: Pareto fronts (Fig 6-8), Cross-domain (Fig 9),
-Convergence (Fig 10), Sensitivity analysis.
+Generates the paper's figures (ICSSD2026 numbering): Pareto fronts (Figs. 2, 4, 5),
+sensitivity analysis (Fig. 3), cross-domain comparison (Fig. 6) and
+convergence (Fig. 7). Fig. 1 is drawn by P02_sensor_node.py.
 Equivalent to P09_ParetoFronts, P10_NumericalResults, P11, P12, P13.
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
+from matplotlib.ticker import FormatStrFormatter, MaxNLocator
+
+
+def _avail_axis(axis):
+    """Availability (%) axis: plain decimals (no offset notation), at most 4 ticks."""
+    axis.set_major_locator(MaxNLocator(nbins=4))
+    axis.set_major_formatter(FormatStrFormatter("%.5f"))
 from pathlib import Path
 
+from metrics import key_points
 
-def _find_key_points(avail, energy, carbon=None):
-    """Find max-reliability, min-energy, and knee-point indices."""
-    idx_maxA = np.argmax(avail)
-    idx_minE = np.argmin(energy)
 
-    a_range = max(avail) - min(avail)
-    e_range = max(energy) - min(energy)
-    a_n = (avail - min(avail)) / max(1e-10, a_range)
-    e_n = (energy - min(energy)) / max(1e-10, e_range)
-    dist = np.sqrt((1 - a_n) ** 2 + e_n ** 2)
-    idx_knee = np.argmin(dist)
-
-    sorted_idx = np.argsort(avail)
-    idx_mid = sorted_idx[len(sorted_idx) // 2]
-
-    return idx_maxA, idx_minE, idx_knee, idx_mid
+def _key_points_from_fitness(fitness):
+    k = key_points(fitness)
+    return k["Max-Reliability"], k["Max-Sustainability"], k["Knee-Point"], k["Balanced"]
 
 
 # =========================================================================
-# P09: Pareto Front Figures (Fig 6, 7, 8)
+# P09: Pareto Front Figures (Figs. 2, 4, 5)
 # =========================================================================
 
 def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
@@ -40,7 +37,7 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
     out.mkdir(parents=True, exist_ok=True)
 
     domains = ["industrial", "smartcity", "healthcare"]
-    fig_nums = [6, 7, 8]
+    fig_nums = [2, 4, 5]
     titles = [
         "Industrial Smart Factory",
         "Smart City Environmental Monitoring",
@@ -55,7 +52,7 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
         carbon = fitness[:, 2]
         mrt = fitness[:, 3]
 
-        idx_maxA, idx_minE, idx_knee, _ = _find_key_points(avail, energy)
+        idx_maxA, idx_minE, idx_knee, _ = _key_points_from_fitness(fitness)
 
         fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
 
@@ -69,6 +66,7 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
         ax.plot(avail[idx_minE], energy[idx_minE], "gs", ms=12, mew=2, label="Max Sustainability")
         ax.plot(avail[idx_knee], energy[idx_knee], "mp", ms=14, mew=2, label="Knee Point")
         ax.set_xlabel("System Availability (%)")
+        _avail_axis(ax.xaxis)
         ax.set_ylabel("Total Energy Consumption (kWh/yr)")
         ax.set_title("(a) Availability vs. Energy")
         ax.legend(fontsize=8)
@@ -81,6 +79,7 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
         cb = plt.colorbar(sc, ax=ax)
         cb.set_label("Energy (kWh/yr)", fontsize=9)
         ax.set_xlabel("System Availability (%)")
+        _avail_axis(ax.xaxis)
         ax.set_ylabel("Mean Recovery Time (s)")
         ax.set_title("(b) Availability vs. Recovery Time")
         ax.grid(True, alpha=0.3)
@@ -88,8 +87,8 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
         if domain == "healthcare":
             ax0 = axes[0]
             ax0.axvline(99.999, color="r", linestyle="--", lw=1.5, alpha=0.7)
-            ax0.text(99.999, ax0.get_ylim()[1] * 0.95, "99.999% ECG req.",
-                     fontsize=8, color="r", ha="right")
+            ax0.text(99.999, ax0.get_ylim()[1] * 0.95, " 99.999% ECG req.",
+                     fontsize=8, color="r", ha="left")
 
         fig.suptitle(f"Fig. {fig_num}. {title} Pareto Front", fontsize=13, fontweight="bold")
         plt.tight_layout()
@@ -100,13 +99,13 @@ def plot_pareto_fronts(all_results: dict, output_dir: str = "output"):
 
 
 # =========================================================================
-# P10: Numerical Results Tables (Tables V, VI, VII)
+# P10: Numerical Results Tables (Tables 5, 6, 7)
 # =========================================================================
 
 def print_numerical_results(all_results: dict):
     """Print formatted result tables for each domain."""
     domains = ["industrial", "smartcity", "healthcare"]
-    table_nums = ["V", "VI", "VII"]
+    table_nums = ["5", "6", "7"]
     domain_names = [
         "Industrial Smart Factory",
         "Smart City Monitoring",
@@ -124,7 +123,7 @@ def print_numerical_results(all_results: dict):
         carbon = fitness[:, 2]
         mrt = fitness[:, 3]
 
-        idx_maxA, idx_minE, idx_knee, idx_mid = _find_key_points(avail, energy)
+        idx_maxA, idx_minE, idx_knee, idx_mid = _key_points_from_fitness(fitness)
 
         indices = [idx_maxA, idx_knee, idx_mid, idx_minE]
         labels = ["Max-Reliability", "Knee-Point", "Balanced", "Max-Sustainability"]
@@ -172,6 +171,7 @@ def plot_sensitivity_analysis(all_results: dict, output_dir: str = "output"):
     sc = ax.scatter(sol[:, 1], energy, c=avail, s=30, cmap="RdYlGn", alpha=0.7)
     cb = plt.colorbar(sc, ax=ax)
     cb.set_label("Availability (%)")
+    cb.ax.yaxis.set_major_formatter(FormatStrFormatter("%.5f"))
     ax.set_xlabel("Duty Cycle (d)")
     ax.set_ylabel("Energy (kWh/yr)")
     ax.set_title("(a) Duty Cycle Impact on Energy")
@@ -184,19 +184,20 @@ def plot_sensitivity_analysis(all_results: dict, output_dir: str = "output"):
     cb.set_label("Energy (kWh/yr)")
     ax.set_xlabel("Maintenance Interval (hours)")
     ax.set_ylabel("Availability (%)")
+    _avail_axis(ax.yaxis)
     ax.set_title("(b) Maintenance Interval vs. Availability")
     ax.grid(True, alpha=0.3)
 
-    fig.suptitle("Sensitivity Analysis – Industrial Case Study", fontsize=13, fontweight="bold")
+    fig.suptitle("Fig. 3. Sensitivity Analysis – Industrial Case Study", fontsize=13, fontweight="bold")
     plt.tight_layout()
-    fig.savefig(out / "Fig_SensitivityAnalysis.png", dpi=300, bbox_inches="tight")
-    fig.savefig(out / "Fig_SensitivityAnalysis.pdf", bbox_inches="tight")
+    fig.savefig(out / "Fig3_SensitivityAnalysis.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out / "Fig3_SensitivityAnalysis.pdf", bbox_inches="tight")
     plt.close(fig)
     print("Sensitivity analysis figure saved.")
 
 
 # =========================================================================
-# P12: Cross-Domain Comparison (Fig 9 + Table VIII)
+# P12: Cross-Domain Comparison (Fig. 6 + Table 8)
 # =========================================================================
 
 def plot_cross_domain(all_results: dict, output_dir: str = "output"):
@@ -222,18 +223,18 @@ def plot_cross_domain(all_results: dict, output_dir: str = "output"):
 
     ax.set_xlabel("Normalized Availability (0 = domain min, 1 = domain max)")
     ax.set_ylabel("Normalized Energy (0 = min, 1 = max)")
-    ax.set_title("Fig. 9. Cross-Domain Normalized Pareto Front Comparison")
+    ax.set_title("Fig. 6. Cross-Domain Normalized Pareto Front Comparison")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    fig.savefig(out / "Fig9_CrossDomain.png", dpi=300, bbox_inches="tight")
-    fig.savefig(out / "Fig9_CrossDomain.pdf", bbox_inches="tight")
+    fig.savefig(out / "Fig6_CrossDomain.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out / "Fig6_CrossDomain.pdf", bbox_inches="tight")
     plt.close(fig)
 
     # Table VIII
     print(f"\n{'=' * 80}")
-    print("  TABLE VIII: Cross-Domain Comparison")
+    print("  TABLE 8: Cross-Domain Comparison")
     print(f"{'=' * 80}")
     print(f"{'Domain':<15s} | {'Avail Min%':>10s} | {'Avail Max%':>10s} | "
           f"{'E Range kWh':>12s} | {'Pareto Size':>12s} | {'Time(min)':>10s}")
@@ -247,11 +248,11 @@ def plot_cross_domain(all_results: dict, output_dir: str = "output"):
         print(f"{label:<15s} | {min(avail):>10.4f} | {max(avail):>10.4f} | "
               f"{max(energy) - min(energy):>12.1f} | {fit.shape[0]:>12d} | {t / 60:>10.1f}")
 
-    print("Cross-domain figure saved as Fig9.")
+    print("Fig. 6 cross-domain figure saved.")
 
 
 # =========================================================================
-# P13: Convergence Analysis (Fig 10)
+# P13: Convergence Analysis (Fig. 7)
 # =========================================================================
 
 def _compute_hypervolume_2d(front_2d, ref_point):
@@ -303,15 +304,61 @@ def plot_convergence(all_results: dict, output_dir: str = "output"):
 
     ax.set_xlabel("Generation")
     ax.set_ylabel("Pareto Front Size")
-    ax.set_title("Fig. 10. Convergence Analysis")
+    ax.set_title("Fig. 7. Convergence Analysis")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    fig.savefig(out / "Fig10_Convergence.png", dpi=300, bbox_inches="tight")
-    fig.savefig(out / "Fig10_Convergence.pdf", bbox_inches="tight")
+    fig.savefig(out / "Fig7_Convergence.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out / "Fig7_Convergence.pdf", bbox_inches="tight")
     plt.close(fig)
-    print("Fig. 10 convergence saved.")
+    print("Fig. 7 convergence saved.")
+
+
+def plot_convergence_runs(conv_rows, output_dir: str = "output"):
+    """Fig. 7 from the multi-run campaign: Pareto-front size per generation
+    (mean and 95% CI over all runs) and mean hypervolume, per domain.
+
+    ``conv_rows`` are the rows of results/data/convergence.csv (as dicts)."""
+    out = Path(output_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    domains = ["industrial", "smartcity", "healthcare"]
+    colors = ["#337AB7", "#5CB85C", "#D9534F"]
+    labels = ["Industrial", "Smart City", "Healthcare"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    for domain, color, label in zip(domains, colors, labels):
+        rows = [r for r in conv_rows if r["domain"] == domain]
+        if not rows:
+            continue
+        g = np.array([int(r["generation"]) for r in rows])
+        m = np.array([float(r["front_size_mean"]) for r in rows])
+        h = np.array([float(r["front_size_ci95"] or 0) for r in rows])
+        axes[0].plot(g, m, color=color, lw=2, label=label)
+        axes[0].fill_between(g, m - h, m + h, color=color, alpha=0.2)
+        hv_rows = [r for r in rows if r["hv_mean"] != ""]
+        gh = np.array([int(r["generation"]) for r in hv_rows])
+        hv = np.array([float(r["hv_mean"]) for r in hv_rows])
+        hh = np.array([float(r["hv_ci95"] or 0) for r in hv_rows])
+        axes[1].plot(gh, hv, color=color, lw=2, label=label)
+        axes[1].fill_between(gh, hv - hh, hv + hh, color=color, alpha=0.2)
+
+    axes[0].set_xlabel("Generation")
+    axes[0].set_ylabel("Pareto Front Size (feasible)")
+    axes[0].set_title("(a) Pareto-front size (mean, 95% CI)")
+    axes[1].set_xlabel("Generation")
+    axes[1].set_ylabel("Normalized Hypervolume")
+    axes[1].set_title("(b) Hypervolume (mean, 95% CI)")
+    for ax in axes:
+        ax.legend()
+        ax.grid(True, alpha=0.3)
+    fig.suptitle("Fig. 7. Convergence Analysis", fontsize=13, fontweight="bold")
+    plt.tight_layout()
+    fig.savefig(out / "Fig7_Convergence.png", dpi=300, bbox_inches="tight")
+    fig.savefig(out / "Fig7_Convergence.pdf", bbox_inches="tight")
+    plt.close(fig)
+    print("Fig. 7 convergence saved.")
 
 
 # =========================================================================

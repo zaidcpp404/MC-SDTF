@@ -1,0 +1,7 @@
+# Python 3.12. Versions used to produce results/data/ (ICSSD2026 paper:
+# pymoo 0.6.1, NumPy 2.4, SciPy 1.17, matplotlib 3.10).
+pymoo==0.6.1.6
+numpy==2.4.6
+scipy==1.17.1
+matplotlib==3.10.9
+psutil==7.2.2
