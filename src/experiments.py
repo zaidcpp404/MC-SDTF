@@ -60,6 +60,7 @@ from config import ALL_CASE_STUDIES  # noqa: E402
 from metrics import (CONFIG_LABELS, OBJECTIVE_NAMES, VARIABLE_NAMES,  # noqa: E402
                      FrontQuality, key_points, knee_reductions, mean_ci95,
                      nondominated)
+from objectives import effective_decision_vectors  # noqa: E402
 from optimizer import MCSDTFProblem, build_nsga2, make_repair  # noqa: E402
 
 REPO = SRC.parent
@@ -75,6 +76,7 @@ N_RUNS = 30
 SCALE_SIZES = [500, 1000, 2500, 5000]   # 500 = the industrial case itself, re-run here for a like-for-like baseline
 SCALE_RUNS = 5
 MOEAD_PENALTY = 1e6      # constraint-violation penalty for MOEA/D (see README)
+MODEL_VERSION = 2        # bump when objectives change; cached runs of other versions are ignored
 HV_STRIDE = 5            # generations between HV/IGD samples on the convergence curve
 
 
@@ -187,7 +189,7 @@ def run_one(algo, domain, seed, pop_size, n_gen, paths, n_nodes=None, history=Fa
     path = run_file(paths, algo, domain, seed, n_nodes)
     if path.exists():
         with np.load(path) as z:
-            if int(z["pop_size"]) == pop_size and int(z["n_gen"]) == n_gen:
+            if _matches(z, pop_size, n_gen):
                 return path
     params = make_params(domain, n_nodes)
     problem = PenalizedProblem(params, MOEAD_PENALTY) if algo == "moead" else TimedProblem(params)
@@ -210,7 +212,8 @@ def run_one(algo, domain, seed, pop_size, n_gen, paths, n_nodes=None, history=Fa
     idx = np.flatnonzero(feas)[nondominated(F[feas])] if feas.any() else np.array([], dtype=int)
     order = idx[np.argsort(F[idx, 0])] if len(idx) else idx
 
-    save = dict(X=X[order], F=F[order], wall=wall, eval_time=problem.eval_time,
+    save = dict(X=effective_decision_vectors(X[order], params), F=F[order], model_version=MODEL_VERSION,
+                wall=wall, eval_time=problem.eval_time,
                 n_evals=problem.n_evals, seed=seed, pop_size=pop_size, n_gen=n_gen,
                 n_nodes=params.n_nodes)
     if algo in ("nsga2", "nsga3") and res.opt is not None and res.F is not None:
@@ -227,8 +230,9 @@ def run_one(algo, domain, seed, pop_size, n_gen, paths, n_nodes=None, history=Fa
 def load_run(path):
     with np.load(path) as z:
         d = {k: z[k] for k in z.files}
-    for k in ("wall", "eval_time", "n_evals", "seed", "pop_size", "n_gen", "n_nodes"):
-        d[k] = d[k].item()
+    for k in ("wall", "eval_time", "n_evals", "seed", "pop_size", "n_gen", "n_nodes", "model_version"):
+        if k in d:
+            d[k] = d[k].item()
     if "hist_sizes" in d:
         off = np.concatenate([[0], np.cumsum(d["hist_sizes"])])
         d["hist_fronts"] = [d["hist_F"][off[i]:off[i + 1]] for i in range(len(d["hist_sizes"]))]
@@ -264,7 +268,12 @@ def _cached(job):
     if not p.exists():
         return False
     with np.load(p) as z:
-        return int(z["pop_size"]) == pop and int(z["n_gen"]) == gen
+        return _matches(z, pop, gen)
+
+
+def _matches(z, pop, gen):
+    return (int(z["pop_size"]) == pop and int(z["n_gen"]) == gen
+            and int(z["model_version"]) == MODEL_VERSION if "model_version" in z.files else False)
 
 
 def _report(i, n, r, t0):
@@ -304,7 +313,7 @@ def stage_scalability(cfg, paths):
 def _runs(paths, algo, domain, n_nodes=None, n_runs=None):
     d = paths.raw / run_tag(algo, domain, n_nodes)
     files = sorted(d.glob("seed_*.npz")) if d.exists() else []
-    runs = [load_run(f) for f in files]
+    runs = [r for r in (load_run(f) for f in files) if r.get("model_version") == MODEL_VERSION]
     if n_runs is not None:
         runs = [r for r in runs if r["seed"] <= n_runs]
     return runs

@@ -43,9 +43,11 @@ def evaluate_objectives(x: np.ndarray, params: CaseStudyParams) -> np.ndarray:
     T_m = x[6]
     eps_h = int(round(x[7]))
 
-    # Clamp
+    # Clamp to the decision-variable bounds (rounding repair can move d and f_s
+    # below their lower bounds, e.g. f_s = 0.1 Hz rounds to 0 Hz)
     r = max(1, min(3, r))
     d = max(0.01, min(1.0, d))
+    f_s = max(0.1, min(100.0, f_s))
     N_gw = max(params.n_gateways_range[0], min(params.n_gateways_range[1], N_gw))
     eps_h = max(0, min(3, eps_h))
 
@@ -129,6 +131,20 @@ def evaluate_objectives(x: np.ndarray, params: CaseStudyParams) -> np.ndarray:
     f4 = float(np.mean(recovery_times))
 
     return np.array([f1, f2, f3, f4])
+
+
+def effective_decision_vectors(X: np.ndarray, params: CaseStudyParams) -> np.ndarray:
+    """Decision vectors exactly as evaluate_objectives uses them (rounded
+    integers, and every variable clamped to its bounds). Used for reporting."""
+    X = np.array(X, dtype=float, copy=True)
+    for j in (0, 5, 7):
+        X[:, j] = np.round(X[:, j])
+    X[:, 0] = np.clip(X[:, 0], 1, 3)
+    X[:, 1] = np.clip(X[:, 1], 0.01, 1.0)
+    X[:, 3] = np.clip(X[:, 3], 0.1, 100.0)
+    X[:, 5] = np.clip(X[:, 5], *params.n_gateways_range)
+    X[:, 7] = np.clip(X[:, 7], 0, 3)
+    return X
 
 
 def evaluate_constraints(x: np.ndarray, params: CaseStudyParams) -> np.ndarray:
