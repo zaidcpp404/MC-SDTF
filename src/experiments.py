@@ -72,7 +72,7 @@ ALGO_LABELS = {"nsga2": "NSGA-II", "nsga3": "NSGA-III", "moead": "MOEA/D"}
 POP_SIZE = 200
 N_GEN = 500
 N_RUNS = 30
-SCALE_SIZES = [1000, 2500, 5000]
+SCALE_SIZES = [500, 1000, 2500, 5000]   # 500 = the industrial case itself, re-run here for a like-for-like baseline
 SCALE_RUNS = 5
 MOEAD_PENALTY = 1e6      # constraint-violation penalty for MOEA/D (see README)
 HV_STRIDE = 5            # generations between HV/IGD samples on the convergence curve
@@ -295,8 +295,9 @@ def stage_compare(cfg, paths):
 
 def stage_scalability(cfg, paths):
     print("\n== Scalability: synthetic industrial deployments ==")
+    # Interleaved (seed-major) order, so any drift in machine speed affects all sizes alike.
     jobs = [("nsga2", "industrial", s, cfg.pop, cfg.gen, paths, n, False)
-            for n in cfg.sizes for s in range(1, cfg.scale_runs + 1)]
+            for s in range(1, cfg.scale_runs + 1) for n in cfg.sizes]
     run_batch(jobs, cfg.jobs)
 
 
@@ -517,9 +518,7 @@ def stage_analyze(cfg, paths):
 
     # Scalability
     rows = []
-    base = _runs(paths, "nsga2", "industrial", n_runs=cfg.runs)
-    for n, runs in [(500, base)] + [(n, _runs(paths, "nsga2", "industrial", n, cfg.scale_runs))
-                                    for n in cfg.sizes]:
+    for n, runs in [(n, _runs(paths, "nsga2", "industrial", n, cfg.scale_runs)) for n in cfg.sizes]:
         runs = [r for r in runs if r["pop_size"] == cfg.pop and r["n_gen"] == cfg.gen]
         if not runs:
             continue
@@ -530,12 +529,11 @@ def stage_analyze(cfg, paths):
         size = [len(r["F"]) for r in runs]
         rows.append([n, len(runs), *mean_ci95(wall), *mean_ci95(ev), *mean_ci95(ovh),
                      *mean_ci95(per_call), *mean_ci95(size), sum(1 for s in size if s == 0)])
-        if n != 500:
-            for r in runs:
-                per_run.append(["scalability", "NSGA-II", "industrial", n, r["seed"], r["seed"],
-                                len(r["F"]), np.nan, np.nan, "",
-                                *(knee_reductions(r["F"]) if len(r["F"]) else (np.nan, np.nan)),
-                                r["wall"], r["eval_time"], r["n_evals"]])
+        for r in runs:
+            per_run.append(["scalability", "NSGA-II", "industrial", n, r["seed"], r["seed"],
+                            len(r["F"]), np.nan, np.nan, "",
+                            *(knee_reductions(r["F"]) if len(r["F"]) else (np.nan, np.nan)),
+                            r["wall"], r["eval_time"], r["n_evals"]])
     _write_csv(data / "scalability.csv",
                ["n_nodes", "n_runs", "runtime_s_mean", "runtime_s_ci95", "eval_time_s_mean",
                 "eval_time_s_ci95", "optimizer_overhead_s_mean", "optimizer_overhead_s_ci95",

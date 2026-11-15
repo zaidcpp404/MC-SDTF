@@ -56,7 +56,7 @@ python3.12 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# Smoke test of the whole pipeline (about 15 s; writes to output/quick/, not results/)
+# Smoke test of the whole pipeline (seconds; writes to output/quick/, not results/)
 python src/experiments.py all --quick
 ```
 
@@ -97,10 +97,10 @@ takes a few seconds.
 
 ### Runtime
 
-One NSGA-II run (population 200, 500 generations, 100,000 evaluations) takes well under two
-minutes on a current desktop CPU. The run times measured for the committed data, and the
-machine they were measured on, are in [`results/data/SUMMARY.md`](results/data/SUMMARY.md)
-and [`results/data/environment.json`](results/data/environment.json). By default runs execute
+One NSGA-II run is 100,000 objective evaluations (population 200, 500 generations). The run
+times measured for the committed data, and the machine they were measured on, are in
+[`results/data/SUMMARY.md`](results/data/SUMMARY.md) and
+[`results/data/environment.json`](results/data/environment.json). By default runs execute
 one at a time so that the recorded per-run times are not inflated by contention;
 `--jobs N` runs N in parallel.
 
@@ -163,20 +163,35 @@ text.
   pymoo, so it optimizes a static-penalty version of the problem (each objective + 10⁶ × total
   constraint violation); only feasible solutions count in its final front.
 * **Confidence intervals.** Mean ± half-width of the two-sided 95% Student-t interval.
-* **Key configurations.** Max-reliability = highest availability; max-sustainability = lowest
-  energy; knee point = largest perpendicular distance from the line joining these two anchors
-  in the normalized availability–energy plane (Section 4.4), on the utopia side of the line;
-  balanced = lowest mean of the four objectives, each min-max normalized over the front.
+* **Key configurations** (`key_points` in `src/metrics.py`):
+  * *Max-reliability* = highest availability. Near the top of each front a dozen or more designs
+    have availabilities that agree to about 10⁻¹¹ (the gateway term equals 1.0 in double
+    precision once N_gw is large), so availabilities within 10⁻⁹ of the maximum are treated as
+    tied and the tie is broken by the other reliability objective, the shortest mean recovery
+    time.
+  * *Max-sustainability* = lowest energy.
+  * *Knee point* = the solution closest to the utopia point (normalized availability 1,
+    normalized energy 0) in the availability–energy plane, both min-max normalized over the
+    front. This is the rule of the original code. `knee_point_perpendicular` implements the
+    alternative "largest perpendicular distance from the anchor line" definition for comparison;
+    it is not used for the reported results.
+  * *Balanced* = the equal-weight solution in the same normalized plane, minimizing
+    (1 − availability) + energy.
+
   Tables 5–8 and Figures 2–6 use the representative (median-HV) run of each domain;
   `tables5to7_mean_ci95_over_runs.csv` and `key_results_knee_reductions.csv` also give the
   30-run means.
 * **Smart city availability.** `config.py` applies a single 99.9% network constraint; the 99.99%
   target for the 30 critical nodes is recorded in the parameters but is not a separate
   constraint in the optimization.
-* **Scalability.** The industrial case with `n_nodes` set to 1,000, 2,500 and 5,000 (all other
-  parameters unchanged), 5 runs each. The objective functions are closed-form in N, so
-  `scalability.csv` reports the measured split between objective evaluation and optimizer
-  overhead rather than assuming one.
+* **Scalability.** The industrial case with `n_nodes` set to 500, 1,000, 2,500 and 5,000 (all
+  other parameters unchanged), 5 runs each, executed in interleaved order (seed by seed across
+  the sizes) so that any drift in machine speed affects all sizes alike. The objective functions
+  are closed-form in N, so `scalability.csv` reports the measured split between objective
+  evaluation and optimizer overhead rather than assuming one.
+* **Timing.** Runtimes depend on the machine and its power state. The committed times were
+  measured on mains power with power-saving modes off; on a laptop, battery or low-power mode
+  can roughly double them.
 
 ---
 

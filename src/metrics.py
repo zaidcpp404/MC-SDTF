@@ -4,7 +4,7 @@ MC-SDTF Pareto-Front Metrics
 Shared definitions used by the experiment campaign, the tables and the figures:
 
 * key configurations of a front (max-reliability, knee point, balanced,
-  max-sustainability), with the knee point defined as in Section 4.4 of the paper;
+  max-sustainability), with the knee point computed as in the original code;
 * normalization bounds, hypervolume (HV) and inverted generational distance (IGD)
   under the reference rules of Section 5.1;
 * mean with a two-sided 95% Student-t confidence interval.
@@ -30,43 +30,65 @@ def _unit(v: np.ndarray) -> np.ndarray:
     return (v - v.min()) / span if span > 0 else np.zeros_like(v, dtype=float)
 
 
-def knee_point(avail: np.ndarray, energy: np.ndarray) -> int:
-    """Knee point by the paper's rule (Section 4.4).
+AVAIL_TIE_TOL = 1e-9   # availabilities closer than this are treated as equal
 
-    Both objectives are normalized to [0, 1] over the front. The anchors are the
-    maximum-reliability solution (highest availability) and the
-    maximum-sustainability solution (lowest energy). The knee is the solution with
-    the largest perpendicular distance from the straight line joining the two
-    anchors. Only solutions on the utopia side of that line (towards high
-    availability and low energy) are eligible; if none lies there, the largest
-    absolute distance is used.
+
+def knee_point(avail: np.ndarray, energy: np.ndarray) -> int:
+    """Knee point, as computed by the original MC-SDTF code.
+
+    Availability and energy are min-max normalized to [0, 1] over the front; the
+    knee is the solution closest (Euclidean distance) to the utopia point
+    (normalized availability 1, normalized energy 0), i.e. the best compromise
+    between the maximum-reliability and maximum-sustainability anchors.
     """
     if len(avail) == 1:
         return 0
     a_n, e_n = _unit(avail), _unit(energy)
-    i_a, i_b = int(np.argmax(avail)), int(np.argmin(energy))
+    return int(np.argmin(np.hypot(1.0 - a_n, e_n)))
+
+
+def knee_point_perpendicular(avail: np.ndarray, energy: np.ndarray) -> int:
+    """Alternative knee definition (largest perpendicular distance from the line
+    joining the two anchors, utopia side only). Not used for the reported
+    results; kept so the two definitions can be compared."""
+    if len(avail) == 1:
+        return 0
+    a_n, e_n = _unit(avail), _unit(energy)
+    i_a, i_b = max_reliability(avail, None), int(np.argmin(energy))
     pa = np.array([a_n[i_a], e_n[i_a]])
-    pb = np.array([a_n[i_b], e_n[i_b]])
-    line = pb - pa
+    line = np.array([a_n[i_b], e_n[i_b]]) - pa
     length = np.hypot(*line)
     if length == 0:
         return i_a
     pts = np.column_stack([a_n, e_n]) - pa
     signed = (line[0] * pts[:, 1] - line[1] * pts[:, 0]) / length
-    # Orient the sign so that positive means "towards the utopia point (1, 0)".
     utopia = np.array([1.0, 0.0]) - pa
     if line[0] * utopia[1] - line[1] * utopia[0] < 0:
         signed = -signed
-    if np.any(signed > 1e-12):
-        return int(np.argmax(signed))
-    return int(np.argmax(np.abs(signed)))
+    return int(np.argmax(signed)) if np.any(signed > 1e-12) else int(np.argmax(np.abs(signed)))
+
+
+def max_reliability(avail: np.ndarray, mrt) -> int:
+    """Maximum-reliability solution: highest availability.
+
+    Near the top of every front, many designs have availabilities that agree to
+    about 1e-11 (the gateway term 1 - (1 - 0.9999)^(N_gw/3) equals 1.0 in
+    double precision once N_gw is large), so a plain argmax would be decided by
+    floating-point noise. Availabilities within AVAIL_TIE_TOL of the maximum are
+    therefore treated as tied, and the tie is broken by the other reliability
+    objective, the shortest mean recovery time (then the lowest index).
+    """
+    top = np.flatnonzero(avail >= avail.max() - AVAIL_TIE_TOL)
+    if mrt is None or len(top) == 1:
+        return int(top[0])
+    return int(top[np.argmin(np.asarray(mrt)[top])])
 
 
 def balanced_point(F: np.ndarray) -> int:
-    """Equal-weight solution: minimum of the mean of the four objectives,
-    each min-max normalized over the front."""
-    N = np.column_stack([_unit(F[:, j]) for j in range(F.shape[1])])
-    return int(np.argmin(N.mean(axis=1)))
+    """Equal-weight balanced solution in the normalized availability-energy plane:
+    minimum of 0.5 x (1 - normalized availability) + 0.5 x normalized energy."""
+    a_n, e_n = _unit(-F[:, 0]), _unit(F[:, 1])
+    return int(np.argmin((1.0 - a_n) + e_n))
 
 
 def key_points(F: np.ndarray) -> dict:
@@ -74,7 +96,7 @@ def key_points(F: np.ndarray) -> dict:
     avail = -F[:, 0]
     energy = F[:, 1]
     return {
-        "Max-Reliability": int(np.argmax(avail)),
+        "Max-Reliability": max_reliability(avail, F[:, 3]),
         "Knee-Point": knee_point(avail, energy),
         "Balanced": balanced_point(F),
         "Max-Sustainability": int(np.argmin(energy)),
