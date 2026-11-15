@@ -171,6 +171,7 @@ def plot_sensitivity_analysis(all_results: dict, output_dir: str = "output"):
     sc = ax.scatter(sol[:, 1], energy, c=avail, s=30, cmap="RdYlGn", alpha=0.7)
     cb = plt.colorbar(sc, ax=ax)
     cb.set_label("Availability (%)")
+    cb.ax.yaxis.set_major_formatter(FormatStrFormatter("%.5f"))
     ax.set_xlabel("Duty Cycle (d)")
     ax.set_ylabel("Energy (kWh/yr)")
     ax.set_title("(a) Duty Cycle Impact on Energy")
